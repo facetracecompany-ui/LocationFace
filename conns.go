@@ -4,14 +4,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -602,87 +599,4 @@ func killPID(pid int32) error {
 		return err
 	}
 	return p.Kill()
-}
-
-var (
-	blkMu  sync.Mutex
-	blkSet map[string]bool
-)
-
-func blockedFile() string {
-	dir, _ := os.UserConfigDir()
-	return filepath.Join(dir, "LocationFace", "blocked.json")
-}
-
-func blockedSet() map[string]bool {
-	blkMu.Lock()
-	defer blkMu.Unlock()
-	if blkSet == nil {
-		blkSet = map[string]bool{}
-		if data, err := os.ReadFile(blockedFile()); err == nil {
-			var l []string
-			_ = json.Unmarshal(data, &l)
-			for _, ip := range l {
-				blkSet[ip] = true
-			}
-		}
-	}
-	out := make(map[string]bool, len(blkSet))
-	for k := range blkSet {
-		out[k] = true
-	}
-	return out
-}
-
-func saveBlocked() {
-	var l []string
-	for ip := range blkSet {
-		l = append(l, ip)
-	}
-	sort.Strings(l)
-	_ = os.MkdirAll(filepath.Dir(blockedFile()), 0o755)
-	data, _ := json.Marshal(l)
-	_ = os.WriteFile(blockedFile(), data, 0o600)
-}
-
-func netsh(args ...string) error {
-	cmd := exec.Command("netsh", args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("%s", strings.TrimSpace(string(out)))
-	}
-	return nil
-}
-
-func blockIP(ip string) error {
-	p := net.ParseIP(ip)
-	if p == nil || ipScope(ip) != "public" {
-		return errors.New("блокировать можно только внешний IP-адрес")
-	}
-	name := "LocationFace block " + ip
-	for _, dir := range []string{"out", "in"} {
-		if err := netsh("advfirewall", "firewall", "add", "rule", "name="+name, "dir="+dir, "action=block", "remoteip="+ip); err != nil {
-			return err
-		}
-	}
-	blockedSet()
-	blkMu.Lock()
-	blkSet[ip] = true
-	saveBlocked()
-	blkMu.Unlock()
-	return nil
-}
-
-func unblockIP(ip string) error {
-	if net.ParseIP(ip) == nil {
-		return errors.New("неверный IP")
-	}
-	err := netsh("advfirewall", "firewall", "delete", "rule", "name=LocationFace block "+ip)
-	blockedSet()
-	blkMu.Lock()
-	delete(blkSet, ip)
-	saveBlocked()
-	blkMu.Unlock()
-	return err
 }

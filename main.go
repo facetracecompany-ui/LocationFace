@@ -98,6 +98,7 @@ func main() {
 	})
 	api("/api/incidents", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, incidentsSnapshot()) })
 	api("/api/packet", handlePacketDetail)
+	api("/api/blocks", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, blocksSnapshot()) })
 	api("/api/vpn", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("refresh") == "1" {
 			refreshVPN()
@@ -226,9 +227,24 @@ func handleAction(w http.ResponseWriter, r *http.Request) {
 		pid, _ := strconv.Atoi(q.Get("pid"))
 		err = killPID(int32(pid))
 	case "block":
-		err = blockIP(q.Get("ip"))
+		err = blockIP(q.Get("ip"), BlockInfo{Host: q.Get("host"), Proc: q.Get("proc"), Exe: q.Get("exe"), Why: q.Get("why"), Manual: q.Get("manual") == "1"})
+		if err == nil {
+			info = "Адрес заблокирован. Снять блокировку можно на вкладке «Блокировки»."
+		}
 	case "unblock":
 		err = unblockIP(q.Get("ip"))
+		if err == nil {
+			info = "Адрес разблокирован: правила удалены из брандмауэра."
+		}
+	case "unblock_all":
+		var done, failed int
+		done, failed, err = unblockAll()
+		info = fmt.Sprintf("Разблокировано адресов: %d", done)
+		if failed > 0 {
+			info += fmt.Sprintf(", не удалось: %d", failed)
+		} else {
+			err = nil
+		}
 	case "clear_incidents":
 		clearIncidents()
 	case "open_defender":

@@ -12,11 +12,11 @@
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--text);font:13px/1.45 "Segoe UI",system-ui,sans-serif;display:flex;flex-direction:column}
-header{display:flex;align-items:center;gap:18px;padding:8px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+header{display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
 h1{font-size:17px;margin:0;font-weight:600;letter-spacing:.2px}
 h1 b{color:var(--accent)}
 nav{display:flex;gap:2px;flex-wrap:wrap}
-.tab{background:none;border:0;color:var(--muted);padding:7px 12px;border-radius:6px;cursor:pointer;font:inherit}
+.tab{background:none;border:0;color:var(--muted);padding:7px 9px;border-radius:6px;cursor:pointer;font:inherit}
 .tab:hover{background:var(--panel2);color:var(--text)}
 .tab.on{background:var(--panel2);color:var(--text);box-shadow:inset 0 -2px var(--accent)}
 .sp{flex:1}
@@ -94,6 +94,7 @@ pre.dump{margin:4px 0 10px;padding:8px 10px;background:#0a0e14;border:1px solid 
     <button class="tab on" data-v="overview">Обзор</button>
     <button class="tab" data-v="threats">Угрозы <span class="badge" id="thBad"></span><span class="badge warn" id="thWarn"></span></button>
     <button class="tab" data-v="sends">Отправка</button>
+    <button class="tab" data-v="blocks">Блокировки <span class="badge warn" id="blkBadge"></span></button>
     <button class="tab" data-v="conns">Соединения</button>
     <button class="tab" data-v="procs">Процессы</button>
     <button class="tab" data-v="packets">Пакеты</button>
@@ -152,6 +153,18 @@ pre.dump{margin:4px 0 10px;padding:8px 10px;background:#0a0e14;border:1px solid 
       <span class="sp"></span><span class="muted" id="sshown"></span>
     </div>
     <table><thead><tr><th>Программа</th><th>Куда</th><th>Сервис</th><th class="num">Отправлено</th><th class="num">Получено</th><th>Канал</th><th>Оценка</th></tr></thead><tbody id="sbody"></tbody></table>
+  </section>
+
+  <section class="view" id="v-blocks">
+    <div class="muted" style="margin-bottom:10px">Адреса, которые вы заблокировали через программу. Блокировка — это два правила Windows Firewall (вход и выход) с именем «LocationFace block &lt;адрес&gt;». Здесь их можно снять; то же можно сделать вручную в «Брандмауэр Защитника Windows в режиме повышенной безопасности» (wf.msc). Для блокировки и разблокировки нужны права администратора.</div>
+    <div id="bnote"></div>
+    <div class="bar">
+      <input type="search" id="bip" style="width:360px" placeholder="Заблокировать адрес вручную, например 203.0.113.5">
+      <button class="btn danger" id="badd">Заблокировать</button>
+      <button class="btn" id="bclear">Разблокировать все</button>
+      <span class="sp"></span><span class="muted" id="bshown"></span>
+    </div>
+    <table><thead><tr><th>Адрес</th><th>Когда</th><th>Кто заблокировал и почему</th><th>Состояние</th><th></th></tr></thead><tbody id="bbody"></tbody></table>
   </section>
 
   <section class="view" id="v-conns">
@@ -274,6 +287,7 @@ async function loadOverview() {
   $('#cSniff').className = 'chip ' + (s.running ? 'ok' : 'warn');
   $('#thBad').textContent = o.incBad || ''; $('#thWarn').textContent = o.incWarn || '';
   sniffOn = !!s.running;
+  $('#blkBadge').textContent = o.blocked || '';
   $('#admBanner').innerHTML = !o.admin
     ? `<div class="banner">Программа запущена без прав администратора: перехват пакетов не работает, часть данных о процессах скрыта. Закройте её и запустите заново, подтвердив запрос Windows.</div>`
     : (s.errors && s.errors.length ? `<div class="banner">Перехват пакетов: ${esc(s.errors.join('; '))}</div>` : '');
@@ -334,7 +348,10 @@ function bindActions(tb) {
     e.stopPropagation();
     const a = b.dataset.a;
     if (a === 'kill') act(`do=kill&pid=${b.dataset.pid}`, 'Завершить процесс (PID ' + b.dataset.pid + ')? Несохранённые данные в нём будут потеряны.');
-    else if (a === 'block') act(`do=block&ip=${encodeURIComponent(b.dataset.ip)}`, 'Заблокировать ' + b.dataset.ip + ' в брандмауэре Windows (вход и выход)?');
+    else if (a === 'block') {
+      const d = b.dataset, q = (k) => encodeURIComponent(d[k] || '');
+      act(`do=block&ip=${encodeURIComponent(d.ip)}&proc=${q('proc')}&host=${q('host')}&exe=${q('exe')}&why=${q('why')}`, 'Заблокировать ' + d.ip + ' в брандмауэре Windows (вход и выход)?\n\nСнять блокировку можно на вкладке «Блокировки».');
+    }
     else if (a === 'unblock') act(`do=unblock&ip=${encodeURIComponent(b.dataset.ip)}`);
     else if (a === 'reveal') act('do=reveal&path=' + encodeURIComponent(b.dataset.p));
     else if (a === 'trust') act('do=trust&path=' + encodeURIComponent(b.dataset.p), 'Доверять этой программе?\n' + b.dataset.p + '\n\nОна перестанет попадать в угрозы и подозрительные отправки. Доверие снимется само, если файл будет изменён или заменён.');
@@ -363,7 +380,7 @@ function renderConns() {
       `<div class="mono wrap">${esc(c.exe || '')}</div>${sigTag(c.sig)}${reasonsHtml(c.reasons)}
        <p>${c.exe ? `<button class="btn" data-a="reveal" data-p="${esc(c.exe)}">Показать файл</button> ${trustBtn(c.exe)} ` : ''}
        ${c.pid > 4 ? `<button class="btn danger" data-a="kill" data-pid="${c.pid}">Завершить процесс</button> ` : ''}
-       ${c.scope === 'public' ? (c.blocked ? `<button class="btn" data-a="unblock" data-ip="${esc(c.remote)}">Разблокировать ${esc(c.remote)}</button>` : `<button class="btn danger" data-a="block" data-ip="${esc(c.remote)}">Заблокировать ${esc(c.remote)}</button>`) : ''}</p>`);
+       ${c.scope === 'public' ? (c.blocked ? `<button class="btn" data-a="unblock" data-ip="${esc(c.remote)}">Разблокировать ${esc(c.remote)}</button>` : `<button class="btn danger" data-a="block" data-ip="${esc(c.remote)}" data-proc="${esc(c.proc)}" data-host="${esc(c.host)}" data-exe="${esc(c.exe)}" data-why="Подозрительное соединение ${esc(c.proc)} → ${esc(c.remote)}:${c.rport}">Заблокировать ${esc(c.remote)}</button>`) : ''}</p>`);
   }).join('') || `<tr><td colspan="8" class="empty">Нет соединений по фильтру</td></tr>`;
   bindRows($('#cbody'), renderConns); bindActions($('#cbody'));
 }
@@ -648,7 +665,7 @@ function incHtml(i) {
     i.exe ? `<button class="btn" data-a="reveal" data-p="${esc(i.exe)}">Показать файл</button>` : '',
     i.exe && i.kind !== 'defender' ? trustBtn(i.exe) : '',
     i.pid > 4 ? `<button class="btn danger" data-a="kill" data-pid="${i.pid}">Завершить процесс</button>` : '',
-    !isPriv(i.remote) ? `<button class="btn danger" data-a="block" data-ip="${esc(i.remote)}">Заблокировать ${esc(i.remote)}</button>` : '',
+    !isPriv(i.remote) ? `<button class="btn danger" data-a="block" data-ip="${esc(i.remote)}" data-proc="${esc(i.proc)}" data-host="${esc(i.host)}" data-exe="${esc(i.exe)}" data-why="${esc(i.title)}">Заблокировать ${esc(i.remote)}</button>` : '',
     `<button class="btn" data-copy="${i.id}">Скопировать отчёт</button>`].filter(Boolean).join(' ');
   return `<div class="find ${i.severity} open" data-id="${i.id}">${head}<div class="b">
     <h4>Что произошло</h4><p>${esc(i.what)}</p>
@@ -717,6 +734,38 @@ $('#texport').onclick = () => {
 };
 $('#tclear').onclick = () => { lastTh = ''; act('do=clear_incidents', 'Очистить весь журнал угроз?'); };
 
+/* ---------- blocks ---------- */
+let blocks = [];
+const BST = { active: ['ok', 'действует'], disabled: ['warn', 'правило отключено'], missing: ['warn', 'правила нет в брандмауэре'], unknown: ['info', 'не удалось проверить'] };
+async function loadBlocks() { blocks = await api('/api/blocks'); renderBlocks(); }
+function renderBlocks() {
+  $('#bshown').textContent = blocks.length ? blocks.length + ' адресов' : '';
+  $('#bclear').disabled = !blocks.length;
+  const unknown = blocks.some((b) => b.state === 'unknown');
+  $('#bnote').innerHTML = unknown ? '<div class="banner">Не удалось прочитать правила брандмауэра (нужны права администратора), поэтому состояние блокировок неизвестно. Разблокировать можно только от имени администратора.</div>' : '';
+  $('#bbody').innerHTML = blocks.map((b) => {
+    const [cls, txt] = BST[b.state] || BST.unknown;
+    const who = [b.proc ? `<b>${esc(b.proc)}</b>` : '', b.manual && !/вручную/i.test(b.why || '') ? 'вручную' : '', b.why ? esc(b.why) : ''].filter(Boolean).join(' · ');
+    const note = !b.known ? '<div class="muted">Правило есть в брандмауэре, но эта программа его не создавала или забыла.</div>'
+      : b.state === 'missing' ? '<div class="muted">Правило удалено из брандмауэра вручную: адрес уже не заблокирован.</div>'
+      : b.state === 'disabled' ? '<div class="muted">Часть правил отключена в брандмауэре: блокировка действует не полностью.</div>' : '';
+    return `<tr><td class="mono">${esc(b.ip)}${b.host ? '<div class="muted" style="font-family:inherit">' + esc(b.host) + '</div>' : ''}</td>
+      <td style="white-space:nowrap">${b.at ? fmtFull(b.at) : '—'}</td>
+      <td style="white-space:normal">${who || '—'}${b.exe ? '<div class="mono muted" style="word-break:break-all">' + esc(b.exe) + '</div>' : ''}${note}</td>
+      <td><span class="tag ${cls}">${txt}</span></td>
+      <td><button class="btn" data-a="unblock" data-ip="${esc(b.ip)}">${b.state === 'missing' ? 'Убрать из списка' : 'Разблокировать'}</button></td></tr>`;
+  }).join('') || '<tr><td colspan="5" class="empty">Заблокированных адресов нет. Заблокировать адрес можно кнопкой в подробностях угрозы или соединения либо вручную выше.</td></tr>';
+  bindActions($('#bbody'));
+}
+$('#badd').onclick = () => {
+  const ip = $('#bip').value.trim();
+  if (!ip) return toast('Введите IP-адрес, например 203.0.113.5');
+  act('do=block&manual=1&why=' + encodeURIComponent('Заблокирован вручную') + '&ip=' + encodeURIComponent(ip), 'Заблокировать ' + ip + ' в брандмауэре Windows (вход и выход)?');
+  $('#bip').value = '';
+};
+$('#bip').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#badd').click(); });
+$('#bclear').onclick = () => act('do=unblock_all', 'Разблокировать все адреса (' + blocks.length + ')? Правила будут удалены из брандмауэра.');
+
 /* ---------- sends ---------- */
 let sends = [], sniffOn = false;
 const ACTOR = { browser: 'Браузер', vendor: 'Известный производитель', tunnel: 'VPN / прокси', signed: 'Подписана', unsigned: 'Без подписи', unknown: 'Не определено' };
@@ -764,15 +813,15 @@ function renderSends() {
        <h4>Что отправляется</h4>${whatIsSent(t)}
        <h4>Файлы, открытые программой</h4>${filesHtml(t)}
        <p>${t.exe ? `<button class="btn" data-a="reveal" data-p="${esc(t.exe)}">Показать файл</button> ` : ''}${t.exe && !t.trusted ? trustBtn(t.exe) + ' ' : ''}${t.pid > 4 ? `<button class="btn danger" data-a="kill" data-pid="${t.pid}">Завершить процесс</button> ` : ''}
-       ${t.remote ? `<button class="btn danger" data-a="block" data-ip="${esc(t.remote)}">Заблокировать ${esc(t.remote)}</button>` : ''}</p>`);
+       ${t.remote ? `<button class="btn danger" data-a="block" data-ip="${esc(t.remote)}" data-proc="${esc(t.proc)}" data-host="${esc(t.host)}" data-exe="${esc(t.exe)}" data-why="Подозрительная отправка: ${esc(t.label)}">Заблокировать ${esc(t.remote)}</button>` : ''}</p>`);
   }).join('') || `<tr><td colspan="7" class="empty">${sniffOn ? 'Нет отправок по фильтру. Попробуйте «Любой объём».' : 'Нет данных: перехват пакетов выключен.'}</td></tr>`;
   bindRows($('#sbody'), renderSends); bindActions($('#sbody'));
 }
 ['sq', 'sver', 'smin'].forEach((i) => $('#' + i).addEventListener('input', renderSends));
 
 /* ---------- polling ---------- */
-const loaders = { overview: loadOverview, threats: loadThreats, sends: loadSends, conns: loadConns, procs: loadProcs, packets: loadPackets, flows: loadFlows, dns: loadDns, downloads: loadDownloads, autoruns: loadAutoruns };
-const every = { overview: 3000, threats: 3000, sends: 3000, conns: 2000, procs: 3000, packets: 1000, flows: 3000, dns: 3000, downloads: 0, autoruns: 15000 };
+const loaders = { overview: loadOverview, threats: loadThreats, sends: loadSends, blocks: loadBlocks, conns: loadConns, procs: loadProcs, packets: loadPackets, flows: loadFlows, dns: loadDns, downloads: loadDownloads, autoruns: loadAutoruns };
+const every = { overview: 3000, threats: 3000, sends: 3000, blocks: 4000, conns: 2000, procs: 3000, packets: 1000, flows: 3000, dns: 3000, downloads: 0, autoruns: 15000 };
 let busy = false, tick = 0;
 async function refresh(force) {
   if (busy && !force) return; busy = true;

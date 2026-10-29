@@ -518,7 +518,7 @@ func overview() map[string]any {
 		"host": host, "admin": isAdmin(), "conns": len(conns), "public": pub, "badConns": badC, "listen": listen,
 		"procs": len(procs), "badProcs": badP, "warnProcs": warnP, "bytesIn": inB, "bytesOut": outB,
 		"sniffer": snifferStatus(), "alerts": snifferAlerts(), "security": rep, "scanning": busy,
-		"incBad": incBad, "incWarn": incWarn,
+		"incBad": incBad, "incWarn": incWarn, "blocked": len(blockedSet()),
 	}
 }
 
