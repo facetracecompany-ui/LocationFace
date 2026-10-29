@@ -1,0 +1,792 @@
+﻿<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LocationFace</title>
+<style>
+:root{
+  --bg:#0d1117;--panel:#161b22;--panel2:#1c2330;--line:#2a3342;--text:#e6edf3;--muted:#8b98a9;
+  --accent:#4da3ff;--ok:#3fb950;--warn:#e3a008;--bad:#f85149;--okbg:#10301a;--warnbg:#3a2d08;--badbg:#3d1416;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:13px/1.45 "Segoe UI",system-ui,sans-serif;display:flex;flex-direction:column}
+header{display:flex;align-items:center;gap:18px;padding:8px 16px;background:var(--panel);border-bottom:1px solid var(--line)}
+h1{font-size:17px;margin:0;font-weight:600;letter-spacing:.2px}
+h1 b{color:var(--accent)}
+nav{display:flex;gap:2px;flex-wrap:wrap}
+.tab{background:none;border:0;color:var(--muted);padding:7px 12px;border-radius:6px;cursor:pointer;font:inherit}
+.tab:hover{background:var(--panel2);color:var(--text)}
+.tab.on{background:var(--panel2);color:var(--text);box-shadow:inset 0 -2px var(--accent)}
+.sp{flex:1}
+.chip{padding:2px 9px;border-radius:99px;font-size:12px;border:1px solid var(--line);color:var(--muted)}
+.chip.ok{color:var(--ok);border-color:#1f5a2c}.chip.bad{color:var(--bad);border-color:#7a2a2a}.chip.warn{color:var(--warn);border-color:#6b5210}
+main{flex:1;overflow:auto;padding:14px 16px}
+.view{display:none}.view.on{display:block}
+.bar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+input[type=search],select{background:var(--panel);border:1px solid var(--line);color:var(--text);padding:6px 9px;border-radius:6px;font:inherit;min-width:220px}
+label{color:var(--muted);display:flex;gap:5px;align-items:center;cursor:pointer}
+.btn{background:var(--panel2);border:1px solid var(--line);color:var(--text);padding:5px 11px;border-radius:6px;cursor:pointer;font:inherit}
+.btn:hover{border-color:var(--accent)}
+.btn.danger{border-color:#7a2a2a;color:#ffb3ae}.btn.danger:hover{background:var(--badbg)}
+.muted{color:var(--muted)}
+table{border-collapse:collapse;width:100%}
+th{position:sticky;top:-14px;background:var(--bg);text-align:left;color:var(--muted);font-weight:500;padding:6px 8px;border-bottom:1px solid var(--line);white-space:nowrap;user-select:none}
+td{padding:5px 8px;border-bottom:1px solid #1d2532;white-space:nowrap;max-width:420px;overflow:hidden;text-overflow:ellipsis}
+td.wrap{white-space:normal;word-break:break-all}
+tr.row{cursor:pointer}
+tr.row:hover td{background:#141b26}
+tr.warn td:first-child{box-shadow:inset 3px 0 var(--warn)}tr.bad td:first-child{box-shadow:inset 3px 0 var(--bad)}
+tr.warn{background:#1c1806}tr.bad{background:#210c0e}
+tr.det td{background:var(--panel);white-space:normal;padding:10px 14px;max-width:none}
+.num{text-align:right;font-variant-numeric:tabular-nums}
+.mono{font-family:Consolas,monospace;font-size:12px}
+.wrap{white-space:normal;word-break:break-all}
+.tag{display:inline-block;padding:0 7px;border-radius:4px;font-size:11px;margin-right:4px}
+.tag.out{background:#12304f;color:#7cc0ff}.tag.in{background:#2c2150;color:#c3a6ff}.tag.listen{background:#233323;color:#8fd48f}
+.tag.ok{background:var(--okbg);color:var(--ok)}.tag.warn{background:var(--warnbg);color:var(--warn)}.tag.bad{background:var(--badbg);color:var(--bad)}.tag.info{background:#1b2a3d;color:var(--accent)}
+.grid{display:grid;grid-template-columns:260px 1fr;gap:14px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.score{text-align:center}
+.ring{width:150px;height:150px;border-radius:50%;margin:6px auto 10px;display:grid;place-items:center;background:conic-gradient(var(--c,#4da3ff) calc(var(--p,0)*1%),#222b3a 0)}
+.ring div{width:118px;height:118px;border-radius:50%;background:var(--panel);display:grid;place-items:center;font-size:38px;font-weight:600}
+.kpis{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
+.kpi{background:var(--panel2);border-radius:8px;padding:8px 10px;text-align:left}
+.kpi b{display:block;font-size:19px}.kpi span{color:var(--muted);font-size:12px}
+.find{border:1px solid var(--line);border-radius:8px;margin-bottom:8px;background:var(--panel)}
+.find>.h{display:flex;gap:10px;align-items:center;padding:9px 12px;cursor:pointer}
+.find .t{font-weight:600}.find .g{color:var(--muted);font-size:12px}
+.find .b{display:none;padding:8px 14px 12px 14px;border-top:1px solid var(--line)}
+.find.open .b{display:block}
+.find.bad{border-color:#7a2a2a}.find.warn{border-color:#6b5210}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.bad{background:var(--bad)}.dot.info{background:var(--accent)}
+ul{margin:6px 0 0;padding-left:18px}li{margin:2px 0;word-break:break-word}
+.fix{margin-top:8px;padding:7px 10px;background:var(--panel2);border-radius:6px}
+.banner{padding:10px 14px;border-radius:8px;margin-bottom:12px;background:var(--warnbg);border:1px solid #6b5210;color:#f0c75e}
+.banner.bad{background:var(--badbg);border-color:#7a2a2a;color:#ffb3ae}
+.tl td:first-child{white-space:nowrap;color:var(--muted)}
+details.dd{margin:6px 0}details.dd summary{cursor:pointer;color:var(--accent)}
+.pkt-in{color:#c3a6ff}.pkt-out{color:#7cc0ff}
+a{color:var(--accent)}
+.badge{display:inline-block;min-width:18px;padding:0 6px;border-radius:99px;font-size:11px;background:var(--bad);color:#fff;margin-left:4px;text-align:center}
+.badge.warn{background:var(--warn);color:#201800}.badge:empty{display:none}
+.kv{display:grid;grid-template-columns:150px 1fr;gap:3px 12px;margin:4px 0 8px}
+.kv span:nth-child(odd){color:var(--muted)}.kv span:nth-child(even){word-break:break-all}
+.b h4{margin:12px 0 4px;font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:var(--muted);font-weight:600}
+.b p{margin:2px 0}
+pre.dump{margin:4px 0 10px;padding:8px 10px;background:#0a0e14;border:1px solid var(--line);border-radius:6px;font:12px/1.4 Consolas,monospace;color:#b7c4d4;overflow:auto;white-space:pre}
+.evl{font:12px Consolas,monospace;color:var(--text);word-break:break-all;margin-top:6px}
+.sum{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.sum .kpi{min-width:120px}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+.toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--line);padding:9px 16px;border-radius:8px;display:none;z-index:9}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:s 1s linear infinite;vertical-align:-2px}
+@keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<header>
+  <h1>Location<b>Face</b></h1>
+  <nav id="tabs">
+    <button class="tab on" data-v="overview">Обзор</button>
+    <button class="tab" data-v="threats">Угрозы <span class="badge" id="thBad"></span><span class="badge warn" id="thWarn"></span></button>
+    <button class="tab" data-v="sends">Отправка</button>
+    <button class="tab" data-v="conns">Соединения</button>
+    <button class="tab" data-v="procs">Процессы</button>
+    <button class="tab" data-v="packets">Пакеты</button>
+    <button class="tab" data-v="flows">Трафик</button>
+    <button class="tab" data-v="dns">DNS</button>
+    <button class="tab" data-v="downloads">Загрузки</button>
+    <button class="tab" data-v="autoruns">Автозагрузка</button>
+  </nav>
+  <span class="sp"></span>
+  <span class="chip" id="cAdmin"></span>
+  <span class="chip" id="cSniff"></span>
+</header>
+
+<main>
+  <section class="view on" id="v-overview">
+    <div id="admBanner"></div>
+    <div class="grid">
+      <div class="card score">
+        <div class="muted">Безопасность ПК</div>
+        <div class="ring" id="ring"><div id="scoreN">…</div></div>
+        <div id="grade" class="muted"></div>
+        <div class="kpis" id="kpis"></div>
+        <p><button class="btn" id="rescan">Проверить заново</button></p>
+        <div class="muted" id="scanInfo" style="font-size:12px"></div>
+      </div>
+      <div>
+        <div id="alertBox"></div>
+        <div id="findings"><div class="empty"><span class="spin"></span> Идёт проверка безопасности…</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="view" id="v-threats">
+    <div id="vpnbox"></div>
+    <div class="sum" id="tsum"></div>
+    <div class="bar">
+      <input type="search" id="tq" placeholder="Поиск: процесс, адрес, текст…">
+      <select id="tsev"><option value="">Любая опасность</option><option value="bad">Опасные</option><option value="warn">Подозрительные</option></select>
+      <select id="tkind"><option value="">Все типы</option></select>
+      <button class="btn" id="texport">Сохранить отчёт</button>
+      <button class="btn danger" id="tclear">Очистить журнал</button>
+      <span class="sp"></span><span class="muted" id="tshown"></span>
+    </div>
+    <div class="muted" style="margin-bottom:10px">Здесь собрано всё подозрительное, что программа заметила в пакетах, соединениях, процессах, автозагрузке и загрузках, с подробностями и доказательствами. Журнал хранится 14 дней. Пароли и cookie в доказательствах скрыты звёздочками.</div>
+    <div id="tlist"></div>
+    <div id="ttrusted" style="margin-top:18px"></div>
+  </section>
+
+  <section class="view" id="v-sends">
+    <div id="sendBanner"></div>
+    <div class="muted" style="margin-bottom:10px">Что программы отправляют в интернет: кто, куда, сколько. Обычные отправки (Telegram на свои серверы, браузер, обновления) помечены как ожидаемые и не считаются угрозой. Подозрительной отправка становится, когда программа неизвестна, адрес — канал для вывода украденных данных или рядом открыты чужие пароли и сессии. Нажмите на строку — увидите подробности и какие файлы могли уходить.</div>
+    <div class="bar">
+      <input type="search" id="sq" placeholder="Поиск: программа, адрес, сайт…">
+      <select id="sver"><option value="">Все отправки</option><option value="bad">Только опасные</option><option value="warn">Опасные и подозрительные</option><option value="ok">Только ожидаемые</option></select>
+      <select id="smin"><option value="0">Любой объём</option><option value="102400">от 100 КБ</option><option value="1048576" selected>от 1 МБ</option><option value="10485760">от 10 МБ</option></select>
+      <span class="sp"></span><span class="muted" id="sshown"></span>
+    </div>
+    <table><thead><tr><th>Программа</th><th>Куда</th><th>Сервис</th><th class="num">Отправлено</th><th class="num">Получено</th><th>Канал</th><th>Оценка</th></tr></thead><tbody id="sbody"></tbody></table>
+  </section>
+
+  <section class="view" id="v-conns">
+    <div class="bar">
+      <input type="search" id="cq" placeholder="Поиск: процесс, адрес, сайт, порт…">
+      <select id="cdir"><option value="">Все направления</option><option value="out">Исходящие</option><option value="in">Входящие</option><option value="listen">Слушают порт</option></select>
+      <label><input type="checkbox" id="cpub" checked> Только внешние</label>
+      <span class="sp"></span><span class="muted" id="cshown"></span>
+    </div>
+    <table><thead><tr><th>Процесс</th><th>PID</th><th>Напр.</th><th>Прот.</th><th>Локальный</th><th>Удалённый адрес</th><th>Сайт / имя</th><th>Состояние</th></tr></thead><tbody id="cbody"></tbody></table>
+  </section>
+
+  <section class="view" id="v-procs">
+    <div class="bar">
+      <input type="search" id="pq" placeholder="Поиск: имя, путь, пользователь…">
+      <label><input type="checkbox" id="ponly"> Только подозрительные</label>
+      <span class="sp"></span><span class="muted" id="pshown"></span>
+    </div>
+    <table><thead><tr><th>Процесс</th><th>PID</th><th>Подпись</th><th>Соед.</th><th>Принято</th><th>Отправлено</th><th>Родитель</th><th>Путь</th></tr></thead><tbody id="pbody"></tbody></table>
+  </section>
+
+  <section class="view" id="v-packets">
+    <div class="bar">
+      <input type="search" id="kq" placeholder="Фильтр: IP, порт, процесс, сайт, текст…">
+      <select id="kproto"><option value="">Все протоколы</option><option>TCP</option><option>UDP</option><option>ICMP</option></select>
+      <select id="kdir"><option value="">Вход и выход</option><option value="in">Входящие</option><option value="out">Исходящие</option></select>
+      <label><input type="checkbox" id="kinfo"> Только с расшифровкой</label>
+      <button class="btn" id="kpause">Пауза</button>
+      <button class="btn" id="kclear">Очистить</button>
+      <span class="sp"></span><span class="muted" id="kshown"></span>
+    </div>
+    <div id="kmsg"></div>
+    <table><thead><tr><th>Время</th><th>Напр.</th><th>Прот.</th><th>Откуда</th><th>Куда</th><th>Размер</th><th>Флаги</th><th>Процесс</th><th>Что внутри</th></tr></thead><tbody id="kbody"></tbody></table>
+  </section>
+
+  <section class="view" id="v-flows">
+    <div class="bar">
+      <input type="search" id="fq" placeholder="Поиск: процесс, адрес, сайт…">
+      <label><input type="checkbox" id="fpub" checked> Только внешние</label>
+      <span class="sp"></span><span class="muted" id="fshown"></span>
+    </div>
+    <table><thead><tr><th>Процесс</th><th>Прот.</th><th>Удалённый адрес</th><th>Сайт / имя</th><th class="num">Принято</th><th class="num">Отправлено</th><th class="num">Пакетов</th><th>Последний</th></tr></thead><tbody id="fbody"></tbody></table>
+  </section>
+
+  <section class="view" id="v-dns">
+    <div class="bar"><span class="muted">Какие сайты запрашивал компьютер (перехвачено в реальном времени) и кеш DNS Windows</span></div>
+    <div class="grid" style="grid-template-columns:1fr 1fr">
+      <div><h3 style="margin:0 0 6px">Запросы сейчас</h3><table><thead><tr><th>Время</th><th>Имя</th><th>Процесс</th></tr></thead><tbody id="dqbody"></tbody></table></div>
+      <div><h3 style="margin:0 0 6px">Кеш DNS Windows</h3><table><thead><tr><th>Имя</th><th>Тип</th><th>Адрес</th></tr></thead><tbody id="dcbody"></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="view" id="v-downloads">
+    <div class="bar">
+      <input type="search" id="dq" placeholder="Поиск по имени или адресу…">
+      <button class="btn" id="dref">Обновить</button>
+      <span class="sp"></span><span class="muted" id="dshown"></span>
+    </div>
+    <div class="muted" style="margin-bottom:8px">Файлы за 45 дней в «Загрузках», на рабочем столе и во временной папке. Откуда файл скачан, определяется по метке Windows (Zone.Identifier).</div>
+    <table><thead><tr><th>Файл</th><th>Дата</th><th>Размер</th><th>Откуда</th><th>Подпись</th><th>Оценка</th></tr></thead><tbody id="dbody"></tbody></table>
+  </section>
+
+  <section class="view" id="v-autoruns">
+    <div class="bar">
+      <input type="search" id="aq" placeholder="Поиск…">
+      <button class="btn" id="aref">Обновить</button>
+      <span class="sp"></span><span class="muted" id="ashown"></span>
+    </div>
+    <div class="muted" style="margin-bottom:8px">Всё, что запускается само: реестр, папки «Автозагрузка», службы вне Windows, планировщик, подмена оболочки.</div>
+    <table><thead><tr><th>Где</th><th>Имя</th><th>Программа</th><th>Подпись</th><th>Издатель</th></tr></thead><tbody id="abody"></tbody></table>
+  </section>
+</main>
+<div class="toast" id="toast"></div>
+
+<script>
+const TOKEN = new URLSearchParams(location.search).get('t') || '';
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(path, opt = {}) {
+  const r = await fetch(path, { ...opt, headers: { 'X-Token': TOKEN } });
+  return r.json();
+}
+function fmtB(n) {
+  n = n || 0;
+  if (n < 1024) return n + ' Б';
+  const u = ['КБ', 'МБ', 'ГБ', 'ТБ']; let i = -1;
+  do { n /= 1024; i++; } while (n >= 1024 && i < 3);
+  return n.toFixed(n < 10 ? 1 : 0) + ' ' + u[i];
+}
+const fmtT = (ms) => new Date(ms).toLocaleTimeString('ru-RU');
+const fmtD = (ms) => new Date(ms).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+const sigTxt = { signed: 'Подписан', unsigned: 'Нет подписи', tampered: 'Нарушена!', untrusted: 'Не доверена', unknown: '—', pending: 'проверяется…', missing: 'нет файла' };
+const sigCls = { signed: 'ok', unsigned: 'warn', tampered: 'bad', untrusted: 'warn', missing: 'warn' };
+const sigTag = (s) => `<span class="tag ${sigCls[s] || 'info'}">${sigTxt[s] || '—'}</span>`;
+function toast(m) { const t = $('#toast'); t.textContent = m; t.style.display = 'block'; t.style.maxWidth = '70vw'; clearTimeout(t._t); t._t = setTimeout(() => t.style.display = 'none', Math.min(15000, 3500 + m.length * 60)); }
+async function act(q, confirmText) {
+  if (confirmText && !confirm(confirmText)) return;
+  const r = await api('/api/action?' + q, { method: 'POST' });
+  toast(r.ok ? (r.message && r.message !== 'ok' ? r.message : 'Готово') : r.message);
+  refresh(true);
+}
+const vtLink = (h) => h ? `<a href="https://www.virustotal.com/gui/file/${h}" target="_blank" rel="noopener">проверить на VirusTotal</a>` : '';
+
+/* ---------- tabs ---------- */
+let view = 'overview';
+document.querySelectorAll('.tab').forEach((b) => b.onclick = () => {
+  view = b.dataset.v;
+  document.querySelectorAll('.tab').forEach((x) => x.classList.toggle('on', x === b));
+  document.querySelectorAll('.view').forEach((v) => v.classList.toggle('on', v.id === 'v-' + view));
+  refresh(true);
+});
+
+/* ---------- overview ---------- */
+async function loadOverview() {
+  const o = await api('/api/overview');
+  $('#cAdmin').textContent = o.admin ? 'Администратор' : 'Нет прав администратора';
+  $('#cAdmin').className = 'chip ' + (o.admin ? 'ok' : 'warn');
+  const s = o.sniffer || {};
+  $('#cSniff').textContent = s.running ? `Перехват пакетов: ${s.total}` : 'Перехват выключен';
+  $('#cSniff').className = 'chip ' + (s.running ? 'ok' : 'warn');
+  $('#thBad').textContent = o.incBad || ''; $('#thWarn').textContent = o.incWarn || '';
+  sniffOn = !!s.running;
+  $('#admBanner').innerHTML = !o.admin
+    ? `<div class="banner">Программа запущена без прав администратора: перехват пакетов не работает, часть данных о процессах скрыта. Закройте её и запустите заново, подтвердив запрос Windows.</div>`
+    : (s.errors && s.errors.length ? `<div class="banner">Перехват пакетов: ${esc(s.errors.join('; '))}</div>` : '');
+  const k = [
+    ['Соединений', o.conns], ['Внешних', o.public], ['Подозрительных', o.badConns], ['Слушают порт', o.listen],
+    ['Процессов', o.procs], ['Опасных проц.', o.badProcs], ['Принято', fmtB(o.bytesIn)], ['Отправлено', fmtB(o.bytesOut)],
+  ];
+  $('#kpis').innerHTML = k.map(([n, v]) => `<div class="kpi"><b>${v}</b><span>${n}</span></div>`).join('');
+  const sec = o.security;
+  if (sec) {
+    const c = sec.score >= 90 ? 'var(--ok)' : sec.score >= 60 ? 'var(--warn)' : 'var(--bad)';
+    $('#ring').style.setProperty('--p', sec.score); $('#ring').style.setProperty('--c', c);
+    $('#scoreN').textContent = sec.score; $('#grade').textContent = sec.grade;
+    $('#scanInfo').textContent = 'Проверено в ' + fmtT(sec.at) + ' (' + (sec.durationMs / 1000).toFixed(1) + ' с)';
+    renderFindings(sec.findings || []);
+  } else { $('#scoreN').textContent = '…'; $('#grade').textContent = 'Идёт проверка…'; }
+  const al = (o.alerts || []).slice().reverse();
+  $('#alertBox').innerHTML = al.length ? `<div class="find bad open"><div class="h"><span class="dot bad"></span><span class="t">События в сети (${al.length})</span></div><div class="b"><ul>${al.slice(0, 15).map((a) => `<li>${fmtT(a.t)} — ${esc(a.text)}${a.proc ? ' [' + esc(a.proc) + ']' : ''}</li>`).join('')}</ul></div></div>` : '';
+}
+const openF = new Set();
+let lastFindings = '';
+function renderFindings(fs) {
+  const sig = JSON.stringify(fs);
+  if (sig === lastFindings) return;
+  lastFindings = sig;
+  const box = $('#findings');
+  box.innerHTML = fs.map((f) => {
+    const key = f.group + f.title;
+    return `<div class="find ${f.status} ${openF.has(key) ? 'open' : ''}" data-k="${esc(key)}"><div class="h"><span class="dot ${f.status}"></span><div><div class="t">${esc(f.title)}</div><div class="g">${esc(f.group)}</div></div></div>
+      <div class="b"><div>${esc(f.detail)}</div>${f.items && f.items.length ? '<ul>' + f.items.slice(0, 40).map((x) => `<li class="mono">${esc(x)}</li>`).join('') + '</ul>' : ''}${f.fix ? `<div class="fix"><b>Что делать:</b> ${esc(f.fix)}</div>` : ''}</div></div>`;
+  }).join('');
+  box.querySelectorAll('.find .h').forEach((h) => h.onclick = () => {
+    const f = h.parentElement, k = f.dataset.k;
+    f.classList.toggle('open'); f.classList.contains('open') ? openF.add(k) : openF.delete(k);
+  });
+}
+$('#rescan').onclick = async () => {
+  lastFindings = '';
+  $('#findings').innerHTML = '<div class="empty"><span class="spin"></span> Идёт проверка безопасности…</div>';
+  $('#scoreN').textContent = '…';
+  await api('/api/security?refresh=1'); loadOverview();
+};
+
+/* ---------- generic rows with detail panel ---------- */
+const openRows = new Set();
+function rowHtml(id, cls, cells, detail) {
+  return `<tr class="row ${cls}" data-id="${esc(id)}">${cells}</tr>` + (openRows.has(id) ? `<tr class="det"><td colspan="20">${detail}</td></tr>` : '');
+}
+function bindRows(tbody, rerender) {
+  tbody.querySelectorAll('tr.row').forEach((tr) => tr.onclick = (e) => {
+    if (e.target.closest('a,button')) return;
+    const id = tr.dataset.id; openRows.has(id) ? openRows.delete(id) : openRows.add(id); rerender();
+  });
+}
+const reasonsHtml = (rs) => rs && rs.length ? '<ul>' + rs.map((r) => `<li>${esc(r)}</li>`).join('') + '</ul>' : '<span class="muted">Подозрительных признаков нет.</span>';
+function bindActions(tb) {
+  tb.querySelectorAll('button[data-a]').forEach((b) => b.onclick = (e) => {
+    e.stopPropagation();
+    const a = b.dataset.a;
+    if (a === 'kill') act(`do=kill&pid=${b.dataset.pid}`, 'Завершить процесс (PID ' + b.dataset.pid + ')? Несохранённые данные в нём будут потеряны.');
+    else if (a === 'block') act(`do=block&ip=${encodeURIComponent(b.dataset.ip)}`, 'Заблокировать ' + b.dataset.ip + ' в брандмауэре Windows (вход и выход)?');
+    else if (a === 'unblock') act(`do=unblock&ip=${encodeURIComponent(b.dataset.ip)}`);
+    else if (a === 'reveal') act('do=reveal&path=' + encodeURIComponent(b.dataset.p));
+    else if (a === 'trust') act('do=trust&path=' + encodeURIComponent(b.dataset.p), 'Доверять этой программе?\n' + b.dataset.p + '\n\nОна перестанет попадать в угрозы и подозрительные отправки. Доверие снимется само, если файл будет изменён или заменён.');
+    else if (a === 'untrust') act('do=untrust&path=' + encodeURIComponent(b.dataset.p));
+    else if (a === 'open_defender') act('do=open_defender');
+    else if (a === 'scan_file') { toast('Защитник проверяет файл, это может занять до минуты…'); act('do=scan_file&path=' + encodeURIComponent(b.dataset.p)); }
+  });
+}
+const trustBtn = (p) => p ? `<button class="btn" data-a="trust" data-p="${esc(p)}">Это моя программа — доверять</button>` : '';
+
+/* ---------- connections ---------- */
+let conns = [];
+async function loadConns() { conns = await api('/api/conns'); renderConns(); }
+function renderConns() {
+  const q = $('#cq').value.toLowerCase(), dir = $('#cdir').value, pub = $('#cpub').checked;
+  const rows = conns.filter((c) => (!pub || c.scope === 'public' || c.dir === 'listen') && (!dir || c.dir === dir) &&
+    (!q || [c.proc, c.remote, c.host, c.local, c.rport, c.lport, c.exe].join(' ').toLowerCase().includes(q)));
+  $('#cshown').textContent = rows.length + ' из ' + conns.length;
+  const dirTxt = { out: 'исх.', in: 'вх.', listen: 'слушает' };
+  $('#cbody').innerHTML = rows.slice(0, 700).map((c) => {
+    const id = `c${c.pid}${c.proto}${c.local}${c.lport}${c.remote}${c.rport}`;
+    const remote = c.dir === 'listen' ? '—' : `${esc(c.remote)}:${c.rport}`;
+    return rowHtml(id, c.level === 'ok' ? '' : c.level,
+      `<td>${esc(c.proc || '?')}</td><td class="num">${c.pid}</td><td><span class="tag ${c.dir}">${dirTxt[c.dir]}</span></td><td>${c.proto}</td>
+       <td class="mono">${esc(c.local)}:${c.lport}</td><td class="mono">${remote}${c.blocked ? ' <span class="tag bad">заблокирован</span>' : ''}</td><td>${esc(c.host || '')}</td><td>${esc(c.status)}</td>`,
+      `<div class="mono wrap">${esc(c.exe || '')}</div>${sigTag(c.sig)}${reasonsHtml(c.reasons)}
+       <p>${c.exe ? `<button class="btn" data-a="reveal" data-p="${esc(c.exe)}">Показать файл</button> ${trustBtn(c.exe)} ` : ''}
+       ${c.pid > 4 ? `<button class="btn danger" data-a="kill" data-pid="${c.pid}">Завершить процесс</button> ` : ''}
+       ${c.scope === 'public' ? (c.blocked ? `<button class="btn" data-a="unblock" data-ip="${esc(c.remote)}">Разблокировать ${esc(c.remote)}</button>` : `<button class="btn danger" data-a="block" data-ip="${esc(c.remote)}">Заблокировать ${esc(c.remote)}</button>`) : ''}</p>`);
+  }).join('') || `<tr><td colspan="8" class="empty">Нет соединений по фильтру</td></tr>`;
+  bindRows($('#cbody'), renderConns); bindActions($('#cbody'));
+}
+['cq', 'cdir', 'cpub'].forEach((i) => $('#' + i).addEventListener('input', renderConns));
+
+/* ---------- processes ---------- */
+let procs = [];
+async function loadProcs() { procs = await api('/api/procs'); renderProcs(); }
+function renderProcs() {
+  const q = $('#pq').value.toLowerCase(), only = $('#ponly').checked;
+  const rows = procs.filter((p) => (!only || p.level !== 'ok') && (!q || [p.name, p.exe, p.user, p.pid, p.cmd].join(' ').toLowerCase().includes(q)));
+  $('#pshown').textContent = rows.length + ' из ' + procs.length;
+  $('#pbody').innerHTML = rows.slice(0, 600).map((p) => {
+    const id = `p${p.pid}-${p.created}`;
+    return rowHtml(id, p.level === 'ok' ? '' : p.level,
+      `<td>${esc(p.name)}</td><td class="num">${p.pid}</td><td>${sigTag(p.sig)}</td><td class="num">${p.conns || ''}</td><td class="num">${p.bytesIn ? fmtB(p.bytesIn) : ''}</td><td class="num">${p.bytesOut ? fmtB(p.bytesOut) : ''}</td><td>${esc(p.parent)}</td><td class="mono" title="${esc(p.exe)}">${esc(p.exe)}</td>`,
+      `<div class="mono wrap">${esc(p.exe)}</div><div class="mono wrap muted">${esc(p.cmd)}</div><div>Пользователь: ${esc(p.user || '—')}${p.signer ? ' · Издатель: ' + esc(p.signer) : ''} · запущен ${p.created ? fmtD(p.created) : '—'}</div>
+       ${p.sha256 ? `<div class="mono muted">SHA-256: ${p.sha256} · ${vtLink(p.sha256)}</div>` : ''}${reasonsHtml(p.reasons)}
+       <p>${p.exe ? `<button class="btn" data-a="reveal" data-p="${esc(p.exe)}">Показать файл</button> ${trustBtn(p.exe)} ` : ''}${p.pid > 4 ? `<button class="btn danger" data-a="kill" data-pid="${p.pid}">Завершить процесс</button>` : ''}</p>`);
+  }).join('');
+  bindRows($('#pbody'), renderProcs); bindActions($('#pbody'));
+}
+['pq', 'ponly'].forEach((i) => $('#' + i).addEventListener('input', renderProcs));
+
+/* ---------- packets ---------- */
+let pkts = [], pkLast = 0, pkPaused = false;
+async function loadPackets() {
+  if (pkPaused) return;
+  const r = await api('/api/packets?since=' + pkLast);
+  pkLast = r.last;
+  if (r.packets && r.packets.length) { pkts = pkts.concat(r.packets); if (pkts.length > 3000) pkts = pkts.slice(-2500); }
+  const s = r.status || {};
+  $('#kmsg').innerHTML = !s.running ? `<div class="banner">Перехват пакетов не работает. ${esc((s.errors || []).join('; '))}</div>` : '';
+  renderPackets();
+}
+function renderPackets() {
+  const q = $('#kq').value.toLowerCase(), pr = $('#kproto').value, d = $('#kdir').value, io = $('#kinfo').checked;
+  const rows = pkts.filter((p) => (!pr || p.proto === pr) && (!d || p.dir === d) && (!io || p.info) &&
+    (!q || [p.src, p.dst, p.sport, p.dport, p.proc, p.host, p.info].join(' ').toLowerCase().includes(q)));
+  $('#kshown').textContent = rows.length + ' из ' + pkts.length;
+  $('#kbody').innerHTML = rows.slice(-300).reverse().map((p) => {
+    const warn = p.info && p.info.includes('⚠');
+    return `<tr class="row ${warn ? 'bad' : ''}" data-id="${p.id}"><td>${fmtT(p.t)}</td><td class="${p.dir === 'in' ? 'pkt-in' : 'pkt-out'}">${p.dir === 'in' ? '← вход' : '→ выход'}</td><td>${p.proto}</td>
+      <td class="mono">${esc(p.src)}${p.sport ? ':' + p.sport : ''}</td><td class="mono">${esc(p.dst)}${p.dport ? ':' + p.dport : ''}${p.host ? ' <span class="muted">(' + esc(p.host) + ')</span>' : ''}</td>
+      <td class="num">${p.len}</td><td>${esc(p.flags)}</td><td>${esc(p.proc)}</td><td title="${esc(p.info)}">${esc(p.info)}</td></tr>`
+      + (openPk === p.id && pkDetail ? `<tr class="det"><td colspan="9">${pkDetail}</td></tr>` : '');
+  }).join('');
+  $('#kbody').querySelectorAll('tr.row').forEach((tr) => tr.onclick = async () => {
+    const id = Number(tr.dataset.id);
+    if (openPk === id) { openPk = 0; pkDetail = ''; return renderPackets(); }
+    openPk = id; pkDetail = '<span class="spin"></span>'; renderPackets();
+    const r = await api('/api/packet?id=' + id);
+    if (openPk !== id) return;
+    if (!r.ok) { pkDetail = '<span class="muted">Пакет уже вытеснен из буфера.</span>'; return renderPackets(); }
+    const p = r.packet;
+    pkDetail = kv([['Время', fmtFull(p.t)], ['Направление', p.dir === 'in' ? 'входящий' : 'исходящий'], ['Протокол', p.proto],
+      ['Откуда', `<span class="mono">${esc(p.src)}${p.sport ? ':' + p.sport : ''}</span>`], ['Куда', `<span class="mono">${esc(p.dst)}${p.dport ? ':' + p.dport : ''}</span>${p.host ? ' · ' + esc(p.host) : ''}`],
+      ['Размер', p.len + ' байт (TTL ' + p.ttl + ')'], ['Флаги TCP', esc(p.flags)], ['Процесс', p.proc ? esc(p.proc) + ' (PID ' + p.pid + ')' : ''],
+      ['Расшифровка', esc(p.info)]]) +
+      (r.dump ? '<h4 style="margin:6px 0 2px;color:var(--muted);font-size:12px">ДАННЫЕ ПАКЕТА (первые 160 байт, пароли скрыты)</h4><pre class="dump">' + esc(r.dump) + '</pre>' : '<span class="muted">В пакете нет данных (служебный).</span>');
+    renderPackets();
+  });
+}
+let openPk = 0, pkDetail = '';
+['kq', 'kproto', 'kdir', 'kinfo'].forEach((i) => $('#' + i).addEventListener('input', renderPackets));
+$('#kpause').onclick = () => { pkPaused = !pkPaused; $('#kpause').textContent = pkPaused ? 'Продолжить' : 'Пауза'; };
+$('#kclear').onclick = () => { pkts = []; renderPackets(); };
+
+/* ---------- flows ---------- */
+let flows = [];
+async function loadFlows() { flows = await api('/api/flows'); renderFlows(); }
+function renderFlows() {
+  const q = $('#fq').value.toLowerCase(), pub = $('#fpub').checked;
+  const rows = flows.filter((f) => (!pub || f.scope === 'public') && (!q || [f.proc, f.remote, f.host, f.rport].join(' ').toLowerCase().includes(q)));
+  $('#fshown').textContent = rows.length + ' из ' + flows.length;
+  $('#fbody').innerHTML = rows.slice(0, 400).map((f) => `<tr><td>${esc(f.proc || '?')}</td><td>${f.proto}</td><td class="mono">${esc(f.remote)}:${f.rport}</td><td>${esc(f.host || '')}</td>
+    <td class="num">${fmtB(f.in)}</td><td class="num">${fmtB(f.out)}</td><td class="num">${f.pkts}</td><td>${fmtT(f.last)}</td></tr>`).join('') || `<tr><td colspan="8" class="empty">Пока нет данных. Нужны права администратора.</td></tr>`;
+}
+['fq', 'fpub'].forEach((i) => $('#' + i).addEventListener('input', renderFlows));
+
+/* ---------- dns ---------- */
+async function loadDns() {
+  const r = await api('/api/dns');
+  $('#dqbody').innerHTML = (r.queries || []).slice().reverse().slice(0, 200).map((q) => `<tr><td>${fmtT(q.t)}</td><td>${esc(q.name)}</td><td>${esc(q.proc)}</td></tr>`).join('') || '<tr><td colspan="3" class="empty">Нет запросов</td></tr>';
+  const tn = { 1: 'A', 28: 'AAAA', 5: 'CNAME' };
+  $('#dcbody').innerHTML = (r.cache || []).slice(0, 300).map((c) => `<tr><td>${esc(c.Entry)}</td><td>${tn[c.Type] || c.Type}</td><td class="mono">${esc(c.Data)}</td></tr>`).join('');
+}
+
+/* ---------- downloads ---------- */
+let dls = [];
+const hostOf = (u) => { try { return new URL(u).host; } catch { return u; } };
+async function loadDownloads() {
+  $('#dbody').innerHTML = '<tr><td colspan="6" class="empty"><span class="spin"></span> Сканирование…</td></tr>';
+  dls = await api('/api/downloads'); renderDownloads();
+}
+function renderDownloads() {
+  const q = $('#dq').value.toLowerCase();
+  const rows = (dls || []).filter((d) => !q || [d.name, d.hostUrl, d.referrer, d.path].join(' ').toLowerCase().includes(q));
+  $('#dshown').textContent = rows.length + ' файлов';
+  $('#dbody').innerHTML = rows.map((d) => rowHtml('d' + d.path, d.level === 'ok' ? '' : d.level,
+    `<td title="${esc(d.path)}">${esc(d.name)}</td><td>${fmtD(d.modified)}</td><td class="num">${fmtB(d.size)}</td><td>${esc(d.zone || 'локальный')}${d.hostUrl ? ' · ' + esc(hostOf(d.hostUrl)) : ''}</td><td>${d.sig ? sigTag(d.sig) : ''}</td><td><span class="tag ${d.level}">${d.score}</span></td>`,
+    `<div class="mono wrap">${esc(d.path)}</div>${d.hostUrl ? `<div class="mono wrap">Скачан с: ${esc(d.hostUrl)}</div>` : ''}${d.referrer ? `<div class="mono wrap muted">Со страницы: ${esc(d.referrer)}</div>` : ''}
+     ${d.sha256 ? `<div class="mono muted">SHA-256: ${d.sha256} · ${vtLink(d.sha256)}</div>` : ''}${reasonsHtml(d.reasons)}
+     <p><button class="btn" data-a="reveal" data-p="${esc(d.path)}">Показать файл</button></p>`)).join('') || '<tr><td colspan="6" class="empty">Ничего не найдено</td></tr>';
+  bindRows($('#dbody'), renderDownloads); bindActions($('#dbody'));
+}
+$('#dq').addEventListener('input', renderDownloads); $('#dref').onclick = loadDownloads;
+
+/* ---------- autoruns ---------- */
+let ars = [];
+async function loadAutoruns() { ars = await api('/api/autoruns'); renderAutoruns(); }
+function renderAutoruns() {
+  const q = $('#aq').value.toLowerCase();
+  const rows = (ars || []).filter((a) => !q || [a.name, a.where, a.command, a.exe].join(' ').toLowerCase().includes(q));
+  $('#ashown').textContent = rows.length + ' записей';
+  $('#abody').innerHTML = rows.map((a) => rowHtml('a' + a.where + a.name, a.level === 'ok' ? '' : a.level,
+    `<td>${esc(a.where)}</td><td>${esc(a.name)}</td><td class="mono" title="${esc(a.command)}">${esc(a.exe)}</td><td>${sigTag(a.sig)}</td><td>${esc(a.signer)}</td>`,
+    `<div class="mono wrap">${esc(a.command.length > 300 && a.decoded ? a.command.slice(0, 160) + '…' : a.command)}</div>
+     ${a.decoded ? '<h4 style="margin:8px 0 2px;color:var(--muted);font-size:12px">РАСШИФРОВАННЫЙ СКРИПТ (команда была закодирована)</h4><pre class="dump">' + esc(a.decoded) + '</pre>' : ''}${reasonsHtml(a.reasons)}${a.exists ? `<p><button class="btn" data-a="reveal" data-p="${esc(a.exe)}">Показать файл</button></p>` : ''}`)).join('') || '<tr><td colspan="5" class="empty">Нет записей</td></tr>';
+  bindRows($('#abody'), renderAutoruns); bindActions($('#abody'));
+}
+$('#aq').addEventListener('input', renderAutoruns); $('#aref').onclick = loadAutoruns;
+
+/* ---------- VPN ---------- */
+let vpnLast = '', vpnScanRows = null, vpnScanBusy = false, vpnData = null;
+const VPNTAG = { client: ['info', 'VPN-клиент'], server: ['info', 'узел VPN'], via: ['ok', 'через VPN'], direct: ['warn', 'мимо VPN'], none: ['info', 'VPN не включён'] };
+const vpnTagHtml = (i) => i.vpn && VPNTAG[i.vpn.verdict] ? `<span class="tag ${VPNTAG[i.vpn.verdict][0]}" title="${esc(i.vpn.title)}">${VPNTAG[i.vpn.verdict][1]}</span> ` : '';
+function vpnSection(i) {
+  const v = i.vpn;
+  if (!v) return '';
+  return `<h4>VPN: это или нет</h4><p>${vpnTagHtml(i)}<b>${esc(v.title)}</b></p><ul>${(v.details || []).map((d) => `<li>${esc(d)}</li>`).join('')}</ul>`;
+}
+async function loadVPN() { vpnData = await api('/api/vpn'); renderVPN(); }
+function renderVPN() {
+  const box = $('#vpnbox'), st = vpnData && vpnData.state;
+  if (!st) { box.innerHTML = ''; return; }
+  const sig = JSON.stringify([st.summary, st.clients, vpnScanRows, vpnScanBusy]);
+  if (sig === vpnLast) return;
+  vpnLast = sig;
+  const mode = !st.active ? '' : st.defaultViaVpn ? '<span class="tag ok">весь трафик через туннель</span>' : '<span class="tag warn">часть трафика мимо туннеля</span>';
+  let h = `<div class="find open" style="margin-bottom:12px"><div class="h" style="cursor:default"><span class="dot ${st.active ? 'ok' : 'info'}"></span>
+    <div style="flex:1"><div class="t">VPN на этом компьютере</div><div class="g">Здесь написано, что относится к VPN: адаптеры, клиент, маршруты. В каждой находке ниже есть пометка, идёт ли она через VPN</div></div>
+    <span class="tag ${st.active ? 'ok' : 'info'}">${st.active ? 'VPN включён' : 'VPN не обнаружен'}</span> ${mode}</div><div class="b">`;
+  h += '<ul>' + (st.summary || []).map((s) => `<li>${esc(s)}</li>`).join('') + '</ul>';
+  if ((st.clients || []).length) {
+    h += '<h4>VPN-клиент и его соединения</h4>' + st.clients.map((c) => `<div><b>${esc(c.name)}</b> <span class="muted">PID ${(c.pids && c.pids.length ? c.pids : [c.pid]).join(', ')}${c.signer ? ' · ' + esc(c.signer) : ''}</span>
+      ${(c.endpoints || []).length ? '<table><thead><tr><th>Адрес</th><th>Имя</th><th>Порт</th><th class="num">Соединений</th><th class="num">Данных</th></tr></thead><tbody>' +
+      c.endpoints.map((e, n) => `<tr><td class="mono">${esc(e.remote)}</td><td>${esc(e.host)}</td><td>${e.port} ${esc(e.proto)}</td><td class="num">${e.conns}</td><td class="num">${e.bytes ? fmtB(e.bytes) : '—'}${n === 0 && e.bytes ? ' <span class="tag info">самый активный</span>' : ''}</td></tr>`).join('') + '</tbody></table>' : '<p class="muted">Внешних соединений сейчас нет.</p>'}</div>`).join('');
+  }
+  h += `<p style="margin-top:10px"><button class="btn" data-vpnscan="1" ${vpnScanBusy ? 'disabled' : ''}>${vpnScanBusy ? 'Сканирую…' : 'Просканировать VPN: что идёт через него, а что мимо'}</button></p>`;
+  if (vpnScanRows) {
+    const V = { client: ['info', 'VPN-клиент'], vpn: ['ok', 'всё через VPN'], mixed: ['warn', 'часть мимо VPN'], direct: ['warn', 'мимо VPN'] };
+    h += `<h4>Результат сканирования: ${vpnScanRows.length} программ с выходом в интернет</h4>
+      <table><thead><tr><th>Программа</th><th class="num">Через VPN</th><th class="num">Напрямую</th><th>Вывод</th><th>Соединения мимо VPN</th></tr></thead><tbody>` +
+      vpnScanRows.map((r) => `<tr><td>${esc(r.proc)} <span class="muted">PID ${r.pid}</span></td><td class="num">${r.viaVpn}</td><td class="num">${r.direct}</td><td><span class="tag ${V[r.verdict][0]}">${V[r.verdict][1]}</span></td>
+      <td class="mono" style="white-space:normal;word-break:break-all">${(r.examples || []).map(esc).join('<br>')}</td></tr>`).join('') + '</tbody></table>' +
+      '<p class="muted">«Мимо VPN» — программа соединяется напрямую, и сервер на той стороне видит ваш настоящий адрес. Для самого VPN-клиента это нормально; для остальных — так бывает, если вы добавили их в исключения VPN. Если незнакомая программа обходит VPN, это повод проверить её.</p>';
+  }
+  h += '</div></div>';
+  box.innerHTML = h;
+  box.querySelectorAll('[data-vpnscan]').forEach((b) => b.onclick = async () => {
+    vpnScanBusy = true; renderVPN();
+    try { const r = await api('/api/vpn?refresh=1&scan=1'); vpnData = r; vpnScanRows = r.scan || []; } catch { toast('Не удалось просканировать VPN'); }
+    vpnScanBusy = false; vpnLast = ''; renderVPN();
+  });
+}
+
+/* ---------- Defender write-up ---------- */
+const defCache = {}, defBusy = {};
+const BASIS = { defender: ['info', 'Защитник'], system: ['ok', 'Система'], inference: ['warn', 'Вывод программы'] };
+const tmx = (ms) => ms ? fmtFull(ms) : '—';
+function defPanel(i) {
+  const name = i.ref;
+  if (!name) return '';
+  const rep = defCache[name];
+  if (!rep) {
+    if (!defBusy[name]) {
+      defBusy[name] = 1;
+      api('/api/defender?name=' + encodeURIComponent(name)).then((r) => { defCache[name] = r; lastTh = ''; renderThreats(); }).catch(() => { delete defBusy[name]; });
+    }
+    return '<h4>Подробный разбор Защитника</h4><p><span class="spin"></span> Собираю данные из журнала Защитника и системы…</p>';
+  }
+  return rep[0] ? defHtml(rep[0], name) : '<p class="muted">Защитник не вернул подробностей по этой угрозе.</p>';
+}
+function defHtml(t, name) {
+  const dets = t.detections || [], files = t.files || [], tl = t.timeline || [], ctx = t.context || [], why = t.why || [], adv = t.advice || [], pr = t.parts || {};
+  let h = '<h4>Подробный разбор Защитника Windows</h4>';
+  if (t.executed === 'yes') h += '<div class="banner bad"><b>Защитник сообщает, что эта угроза выполнялась.</b> Файл не просто лежал на диске — он запускался и мог получить доступ к вашим данным.</div>';
+  h += kv([['Угроза', `<b>${esc(t.name)}</b>`], ['Серьёзность', esc(t.severity)], ['Категория', esc(t.category)],
+    ['Состояние', t.active ? '<span class="tag bad">активна</span>' : '<span class="tag ok">обработана Защитником</span>'],
+    ['Выполнялась', { yes: '<span class="tag bad">да</span>', no: '<span class="tag ok">нет</span>', unknown: '<span class="tag info">неизвестно</span>' }[t.executed]],
+    ['Первое обнаружение', tmx(t.first)], ['Последнее', tmx(t.last)], ['Обнаружений', dets.length]]);
+
+  if (tl.length) h += '<h4>Хронология: что и когда произошло</h4><table class="tl"><tbody>' + tl.map((e) =>
+    `<tr><td>${tmx(e.t)}</td><td><span class="tag ${e.source === 'Защитник' ? 'info' : 'ok'}">${esc(e.source)}</span></td><td style="white-space:normal">${esc(e.text)}</td></tr>`).join('') + '</tbody></table>';
+
+  if (dets.length) h += `<h4>Что именно нашёл Защитник (${dets.length})</h4><table><thead><tr><th>Время</th><th>Процесс, при котором замечено</th><th>Что обнаружено</th><th>Итог</th><th>Как поймали</th></tr></thead><tbody>` +
+    dets.map((d) => `<tr><td>${tmx(d.time)}</td><td class="mono" style="white-space:normal;word-break:break-all">${esc(d.process || '—')}</td>
+      <td style="white-space:normal">${(d.resources || []).map((r) => `<div><span class="tag info">${esc(r.label)}</span> <span class="mono" style="word-break:break-all">${esc(r.path)}</span>${r.inner ? ' → внутри: ' + esc(r.inner) : ''}${r.url ? '<br><span class="muted">скачан с ' + esc(r.url) + '</span>' : ''}</div>`).join('')}</td>
+      <td style="white-space:normal">${esc(d.status || '—')}${d.execution ? '<br><span class="muted">выполнение: ' + esc(d.execution) + '</span>' : ''}${d.error && !/успешно/i.test(d.error) ? '<br><span class="tag warn">' + esc(d.error) + '</span>' : ''}</td>
+      <td style="white-space:normal">${esc(d.source || '—')}<br><span class="muted">${esc(d.detType || '')}${d.origin ? ' · ' + esc(d.origin) : ''}${d.user ? ' · ' + esc(d.user) : ''}</span>${d.signature ? '<br><span class="muted">базы ' + esc(d.signature) + '</span>' : ''}</td></tr>`).join('') + '</tbody></table>';
+
+  if (files.length) {
+    h += '<h4>Файлы, связанные с угрозой</h4>';
+    h += files.map((f) => {
+      const gone = f.exists ? '' : '<p class="muted">Файла нет на диске — он в карантине Защитника или удалён.</p>';
+      const k = f.exists ? kv([['Размер', fmtB(f.size)], ['Создан', tmx(f.created)], ['Изменён', tmx(f.modified)], ['Последнее открытие', tmx(f.accessed)], ['Атрибуты', (f.attrs || []).join(', ')],
+        ['Подпись', f.sig ? sigTag(f.sig) + esc(f.signer || '') : ''], ['SHA-256', f.sha256 ? `<span class="mono">${f.sha256}</span> · ${vtLink(f.sha256)}` : ''],
+        ['Откуда скачан', f.zone ? esc(f.zone) + (f.hostUrl ? ' · <span class="mono">' + esc(f.hostUrl) + '</span>' : '') + (f.referrer ? '<br>со страницы <span class="mono">' + esc(f.referrer) + '</span>' : '') : '']]) : '';
+      const runs = (f.runs || []).length ? '<ul>' + f.runs.map((r) => `<li>Запуск зафиксирован: <b>${tmx(r.last)}</b>${r.count ? ' (счётчик ' + r.count + ')' : ''}${r.first ? ', первый ' + tmx(r.first) : ''} — ${esc(r.source)}<span class="muted"> · ${esc(r.note)}</span></li>`).join('') + '</ul>' : '';
+      const sib = (f.siblings || []).length ? '<div class="muted">Рядом в папке появились за те же минуты:</div><ul>' + f.siblings.map((x) => `<li class="mono">${esc(x.name)} <span class="muted">${fmtB(x.size)}, ${tmx(x.created)}</span></li>`).join('') + '</ul>' : '';
+      const extra = [['Сейчас запущен', (f.running || []).join('; ')], ['Соединения', (f.conns || []).join('; ')], ['В автозагрузке', (f.autoruns || []).join('; ')], ['Наши прежние находки', (f.related || []).join('; ')]];
+      const btn = f.exists ? `<p><button class="btn" data-a="reveal" data-p="${esc(f.path)}">Показать файл</button> <button class="btn" data-a="scan_file" data-p="${esc(f.path)}">Проверить Защитником ещё раз (файл не удаляется)</button></p>` : '';
+      return `<div class="find ${f.exists ? 'warn' : ''}" style="padding:8px 12px"><div class="mono" style="word-break:break-all"><b>${esc(f.path)}</b></div>${gone}${k}${runs}${kv(extra)}${sib}${btn}</div>`;
+    }).join('');
+  }
+
+  h += '<h4>Почему Защитник пожаловался</h4><ul>' + why.map((w) => `<li><span class="tag ${BASIS[w.basis][0]}">${BASIS[w.basis][1]}</span> ${esc(w.text)}</li>`).join('') + '</ul>';
+  h += '<p class="muted">Метки: «Защитник» — то, что сообщил сам Защитник; «Система» — факты, которые программа прочитала в Windows; «Вывод программы» — наше предположение, не вердикт.</p>';
+  h += '<h4>Как читается название</h4>' + kv([['Тип', esc(pr.Type) + (pr.TypeText ? ' — ' + esc(pr.TypeText) : '')], ['Платформа', esc(pr.Platform) + (pr.PlatformText ? ' — ' + esc(pr.PlatformText) : '')],
+    ['Семейство', esc(pr.Family)], ['Вариант', esc(pr.Variant)], ['Суффикс', pr.Suffix ? '!' + esc(pr.Suffix) + ' — ' + esc(pr.SuffixText) : '']]);
+
+  if (ctx.length) h += `<details class="dd"><summary>Журнал Защитника вокруг обнаружений (${ctx.length})</summary><table class="tl"><tbody>` +
+    ctx.map((e) => `<tr><td>${tmx(e.t)}</td><td class="muted">${esc(e.source)}</td><td style="white-space:normal">${esc(e.text)}</td></tr>`).join('') + '</tbody></table></details>';
+
+  if (adv.length) h += '<h4>Что делать</h4><ul>' + adv.map((a) => `<li>${esc(a)}</li>`).join('') + '</ul>';
+  h += `<p><button class="btn" data-a="open_defender">Открыть журнал защиты Windows</button> <a class="btn" style="text-decoration:none;display:inline-block" href="${esc(t.infoUrl)}" target="_blank" rel="noopener">Описание на сайте Microsoft</a>
+    <button class="btn" data-defcopy="${esc(name)}">Скопировать полный отчёт</button> <button class="btn" data-defrefresh="${esc(name)}">Обновить разбор</button></p>`;
+  return h;
+}
+
+/* ---------- threats ---------- */
+let incs = [], lastTh = '';
+const openInc = new Set();
+const KIND = { plain: 'Пароль без шифрования', scan: 'Сканирование портов', bruteforce: 'Подбор доступа', worm: 'Червь / массовое сканирование',
+  ratport: 'Порт троянов', beacon: 'Маячок (beacon)', exfil: 'Утечка данных', dns: 'Подозрительный DNS', httpexe: 'EXE по HTTP',
+  icmp: 'ICMP-туннель', conn: 'Подозрительное соединение', proc: 'Подозрительный процесс', defender: 'Защитник Windows',
+  autorun: 'Автозагрузка', download: 'Опасная загрузка', upload: 'Подозрительная отправка данных', stealer: 'Доступ к чужим паролям и сессиям' };
+$('#tkind').innerHTML += Object.entries(KIND).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+const isPriv = (ip) => !ip || /^(10\.|127\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|0\.|2[2-5]\d\.)/.test(ip) || ip.includes(':');
+const fmtFull = (ms) => new Date(ms).toLocaleString('ru-RU');
+function incText(i) {
+  const L = [];
+  L.push(`[${i.severity === 'bad' ? 'ОПАСНО' : 'ПОДОЗРИТЕЛЬНО'}] ${i.title}`);
+  L.push(`Тип: ${KIND[i.kind] || i.kind}`);
+  L.push(`Впервые: ${fmtFull(i.first)}   Последний раз: ${fmtFull(i.last)}   Повторов: ${i.count}`);
+  L.push(`Что произошло: ${i.what}`);
+  if (i.reasons && i.reasons.length) { L.push('Почему подозрительно:'); i.reasons.forEach((r) => L.push('  - ' + r)); }
+  if (i.proc || i.exe) {
+    L.push(`Процесс: ${i.proc}${i.pid ? ' (PID ' + i.pid + ')' : ''}`);
+    if (i.exe) L.push(`Файл: ${i.exe}`);
+    if (i.cmd) L.push(`Командная строка: ${i.cmd}`);
+    if (i.user) L.push(`Пользователь: ${i.user}`);
+    if (i.parent) L.push(`Родитель: ${i.parent}`);
+    if (i.sig) L.push(`Подпись: ${sigTxt[i.sig] || i.sig}${i.signer ? ' — ' + i.signer : ''}`);
+    if (i.sha256) L.push(`SHA-256: ${i.sha256}`);
+  }
+  if (i.vpn) { L.push(`VPN: ${i.vpn.title}`); (i.vpn.details || []).forEach((d) => L.push('  - ' + d)); }
+  if (i.remote) L.push(`Адрес: ${i.remote}${i.rport ? ':' + i.rport : ''} ${i.proto || ''}${i.host ? '  (' + i.host + ')' : ''}`);
+  (i.evidence || []).forEach((e, n) => { L.push(`Доказательство ${n + 1}: ${e.line}`); if (e.dump) L.push(e.dump.replace(/\n$/, '').split('\n').map((x) => '    ' + x).join('\n')); });
+  L.push(`Что делать: ${i.advice}`);
+  return L.join('\n');
+}
+function kv(pairs) {
+  const rows = pairs.filter(([, v]) => v !== '' && v != null && v !== 0);
+  return rows.length ? '<div class="kv">' + rows.map(([k, v]) => `<span>${k}</span><span>${v}</span>`).join('') + '</div>' : '';
+}
+function incHtml(i) {
+  const open = openInc.has(i.id);
+  const who = [i.proc, i.remote ? i.remote + (i.rport ? ':' + i.rport : '') : ''].filter(Boolean).join(' → ');
+  const head = `<div class="h"><span class="dot ${i.severity}"></span><div style="flex:1"><div class="t">${esc(i.title)}</div>
+    <div class="g">${esc(KIND[i.kind] || i.kind)} · ${fmtT(i.first)}${i.count > 1 ? ' – ' + fmtT(i.last) + ' · повторов: ' + i.count : ''}${who ? ' · ' + esc(who) : ''}</div></div>
+    ${vpnTagHtml(i)}<span class="tag ${i.severity}">${i.severity === 'bad' ? 'опасно' : 'подозрительно'}</span></div>`;
+  if (!open) return `<div class="find ${i.severity}" data-id="${i.id}">${head}</div>`;
+  const proc = kv([['Процесс', esc(i.proc)], ['PID', i.pid || ''], ['Файл', i.exe ? `<span class="mono">${esc(i.exe)}</span>` : ''],
+    ['Командная строка', i.cmd ? `<span class="mono">${esc(i.cmd)}</span>` : ''], ['Пользователь', esc(i.user)], ['Родитель', esc(i.parent)],
+    ['Подпись', i.sig ? sigTag(i.sig) + esc(i.signer || '') : ''], ['SHA-256', i.sha256 ? `<span class="mono">${i.sha256}</span> · ${vtLink(i.sha256)}` : ''],
+    ['Запущен', i.started ? fmtFull(i.started) : '']]);
+  const dst = kv([['Адрес', i.remote ? `<span class="mono">${esc(i.remote)}</span>` : ''], ['Сайт / имя', esc(i.host)], ['Порт', i.rport || ''], ['Протокол', esc(i.proto)]]);
+  const ev = (i.evidence || []).map((e) => `<div class="evl">${fmtT(e.t)} — ${esc(e.line)}</div>${e.dump ? `<pre class="dump">${esc(e.dump)}</pre>` : ''}`).join('');
+  const btns = [
+    i.exe ? `<button class="btn" data-a="reveal" data-p="${esc(i.exe)}">Показать файл</button>` : '',
+    i.exe && i.kind !== 'defender' ? trustBtn(i.exe) : '',
+    i.pid > 4 ? `<button class="btn danger" data-a="kill" data-pid="${i.pid}">Завершить процесс</button>` : '',
+    !isPriv(i.remote) ? `<button class="btn danger" data-a="block" data-ip="${esc(i.remote)}">Заблокировать ${esc(i.remote)}</button>` : '',
+    `<button class="btn" data-copy="${i.id}">Скопировать отчёт</button>`].filter(Boolean).join(' ');
+  return `<div class="find ${i.severity} open" data-id="${i.id}">${head}<div class="b">
+    <h4>Что произошло</h4><p>${esc(i.what)}</p>
+    ${i.kind === 'defender' ? defPanel(i) : ''}
+    ${i.reasons && i.reasons.length ? '<h4>Почему это подозрительно</h4><ul>' + i.reasons.map((r) => `<li>${esc(r)}</li>`).join('') + '</ul>' : ''}
+    ${proc ? '<h4>Кто</h4>' + proc : ''}${dst ? '<h4>Куда</h4>' + dst : ''}
+    ${vpnSection(i)}
+    ${ev ? `<h4>Доказательства (${i.evidence.length})</h4>` + ev : ''}
+    <div class="fix"><b>Что делать:</b> ${esc(i.advice)}</div><p style="margin-top:10px">${btns}</p></div></div>`;
+}
+let thFirst = true;
+async function loadThreats() {
+  incs = await api('/api/incidents');
+  if (thFirst && incs.length) { // show one in full: the one named in the link, otherwise the newest
+    thFirst = false;
+    const want = new URLSearchParams(location.hash.split('?')[1] || '').get('open');
+    const hit = want && incs.find((i) => i.title.includes(want));
+    openInc.add((hit || incs[0]).id);
+  }
+  renderThreats();
+  loadVPN().catch(() => {});
+  const tr = await api('/api/trusted');
+  $('#ttrusted').innerHTML = tr.length ? `<h4 style="margin:0 0 6px;color:var(--muted);font-size:12px;text-transform:uppercase">Программы, которым вы доверяете (${tr.length})</h4>` +
+    tr.map((e) => `<div class="evl">${esc(e.path)} <button class="btn" data-a="untrust" data-p="${esc(e.path)}" style="margin-left:8px">Убрать из доверенных</button></div>`).join('') : '';
+  bindActions($('#ttrusted'));
+}
+function filteredInc() {
+  const sev = $('#tsev').value, kind = $('#tkind').value, q = $('#tq').value.toLowerCase();
+  return (incs || []).filter((i) => (!sev || i.severity === sev) && (!kind || i.kind === kind) &&
+    (!q || [i.title, i.proc, i.exe, i.remote, i.host, i.cmd, (i.reasons || []).join(' ')].join(' ').toLowerCase().includes(q)));
+}
+function renderThreats() {
+  const all = incs || [], rows = filteredInc();
+  const bad = all.filter((i) => i.severity === 'bad').length, warn = all.length - bad;
+  $('#tsum').innerHTML = `<div class="kpi"><b style="color:var(--bad)">${bad}</b><span>опасных</span></div><div class="kpi"><b style="color:var(--warn)">${warn}</b><span>подозрительных</span></div><div class="kpi"><b>${all.length}</b><span>всего за 14 дней</span></div>`;
+  $('#tshown').textContent = rows.length + ' из ' + all.length;
+  const html = rows.map(incHtml).join('') || '<div class="empty">Подозрительных событий пока нет. Программа наблюдает за сетью — новые события появятся здесь сами.</div>';
+  if (html === lastTh) return;
+  lastTh = html;
+  const box = $('#tlist'); box.innerHTML = html;
+  box.querySelectorAll('.find > .h').forEach((h) => h.onclick = () => {
+    const id = Number(h.parentElement.dataset.id); openInc.has(id) ? openInc.delete(id) : openInc.add(id); lastTh = ''; renderThreats();
+  });
+  bindActions(box);
+  box.querySelectorAll('button[data-defcopy]').forEach((b) => b.onclick = async (e) => {
+    e.stopPropagation();
+    const r = defCache[b.dataset.defcopy];
+    try { await navigator.clipboard.writeText(r && r[0] ? r[0].text : ''); toast('Полный отчёт скопирован'); } catch { toast('Не удалось скопировать'); }
+  });
+  box.querySelectorAll('button[data-defrefresh]').forEach((b) => b.onclick = (e) => { e.stopPropagation(); delete defCache[b.dataset.defrefresh]; delete defBusy[b.dataset.defrefresh]; lastTh = ''; renderThreats(); });
+  box.querySelectorAll('button[data-copy]').forEach((b) => b.onclick = async (e) => {
+    e.stopPropagation();
+    const i = incs.find((x) => x.id === Number(b.dataset.copy));
+    try { await navigator.clipboard.writeText(incText(i)); toast('Отчёт скопирован'); } catch { toast('Не удалось скопировать — используйте «Сохранить отчёт»'); }
+  });
+}
+['tq', 'tsev', 'tkind'].forEach((i) => $('#' + i).addEventListener('input', () => { lastTh = ''; renderThreats(); }));
+$('#texport').onclick = () => {
+  const rows = filteredInc();
+  if (!rows.length) return toast('Нечего сохранять');
+  const text = `LocationFace — отчёт об угрозах\n${fmtFull(Date.now())}\nСобытий: ${rows.length}\n${'='.repeat(70)}\n\n` + rows.map(incText).join('\n\n' + '-'.repeat(70) + '\n\n') + '\n';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+  a.download = 'locationface-threats-' + new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-') + '.txt';
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+};
+$('#tclear').onclick = () => { lastTh = ''; act('do=clear_incidents', 'Очистить весь журнал угроз?'); };
+
+/* ---------- sends ---------- */
+let sends = [], sniffOn = false;
+const ACTOR = { browser: 'Браузер', vendor: 'Известный производитель', tunnel: 'VPN / прокси', signed: 'Подписана', unsigned: 'Без подписи', unknown: 'Не определено' };
+const CHAN = { tls: 'зашифровано (TLS)', plain: 'открытый текст', udp: 'UDP', unknown: 'не определён' };
+const LVL = { ok: ['ok', 'ожидаемо'], warn: ['warn', 'проверьте'], bad: ['bad', 'опасно'] };
+const sendId = (t) => 's' + t.pid + '-' + (t.host || t.remote);
+async function loadSends() { sends = await api('/api/transfers'); renderSends(); }
+function whatIsSent(t) {
+  let h = '';
+  const dur = Math.max(1, Math.round((t.last - t.first) / 1000));
+  h += `<p>Отправлено <b>${fmtB(t.out)}</b>, получено ${fmtB(t.in)} за ${dur} с · в среднем ${fmtB(Math.round(t.out / dur))}/с · пакетов ${t.pkts}.</p>`;
+  if (t.channel === 'tls') h += `<p class="muted">Содержимое зашифровано (HTTPS/TLS): видно, кто, куда и сколько, но что именно внутри — прочитать нельзя. Ниже — файлы, которые программа держала открытыми.</p>`;
+  else if (t.channel === 'plain') h += `<p><span class="tag warn">открытый текст</span> Данные идут без шифрования, поэтому видно содержимое запросов (значения полей и паролей программа не сохраняет).</p>`;
+  else h += `<p class="muted">Содержимое определить не удалось (${esc(CHAN[t.channel] || '')}).</p>`;
+  if (t.reqs && t.reqs.length) h += '<h4>Запросы</h4><ul>' + t.reqs.map((r) => `<li class="mono">${esc(r)}</li>`).join('') + '</ul>';
+  if (t.upFiles && t.upFiles.length) h += '<h4>Файлы, которые передаются в запросе</h4><ul>' + t.upFiles.map((f) => `<li><b>${esc(f.name)}</b>${f.type ? ' <span class="muted">(' + esc(f.type) + ')</span>' : ''}</li>`).join('') + '</ul>';
+  if (t.fields && t.fields.length) h += '<h4>Поля, которые отправляются (значения скрыты)</h4><ul>' + t.fields.map((f) => `<li>${esc(f)}</li>`).join('') + '</ul>';
+  if (t.ua) h += `<h4>Чем представляется программа</h4><p class="mono">${esc(t.ua)}</p>`;
+  return h;
+}
+function filesHtml(t) {
+  const fs = t.files || [];
+  if (!fs.length) return '<p class="muted">Программа не держала открытых пользовательских файлов (или список ещё собирается, или нет прав на чтение чужих процессов).</p>';
+  return `<p class="muted">Это файлы, которые программа держала открытыми, пока шла передача. Точно сказать, какой из них уходит, нельзя; совпадение размера с объёмом отправки — сильный признак.</p>
+    <table><thead><tr><th>Файл</th><th class="num">Размер</th><th>Признак</th></tr></thead><tbody>${fs.map((f) => `<tr><td class="mono" style="white-space:normal;word-break:break-all">${esc(f.path)}</td><td class="num">${fmtB(f.size)}</td>
+    <td>${f.match ? '<span class="tag warn">размер совпадает с отправкой</span>' : ''}${f.sens ? '<span class="tag bad">⚠ ' + esc(f.sens) + '</span>' : ''}</td></tr>`).join('')}</tbody></table>`;
+}
+function renderSends() {
+  const q = $('#sq').value.toLowerCase(), ver = $('#sver').value, min = Number($('#smin').value);
+  $('#sendBanner').innerHTML = !sniffOn ? '<div class="banner">Данные об отправке собираются перехватом пакетов, а он выключен. Запустите программу от имени администратора.</div>' : '';
+  const rows = sends.filter((t) => t.out >= min && (!ver || (ver === 'ok' ? t.level === 'ok' : ver === 'bad' ? t.level === 'bad' : t.level !== 'ok')) &&
+    (!q || [t.proc, t.host, t.remote, t.service, t.exe].join(' ').toLowerCase().includes(q)));
+  $('#sshown').textContent = rows.length + ' из ' + sends.length;
+  $('#sbody').innerHTML = rows.slice(0, 300).map((t) => {
+    const [cls, txt] = LVL[t.level];
+    const dest = (t.host || t.remote) + (t.ports && t.ports.length ? ':' + t.ports[0] : '');
+    return rowHtml(sendId(t), cls === 'ok' ? '' : cls,
+      `<td>${esc(t.proc)}</td><td class="mono">${esc(dest)}</td><td>${esc(t.service || '')}</td><td class="num">${fmtB(t.out)}</td><td class="num">${fmtB(t.in)}</td><td>${esc(CHAN[t.channel] || '')}${t.tunnel ? ' <span class="tag info">VPN</span>' : ''}</td><td><span class="tag ${cls}">${t.trusted ? 'доверенная' : txt}</span></td>`,
+      `<h4>Вывод</h4><p><b>${esc(t.label)}</b></p>${reasonsHtml(t.reasons)}
+       <h4>Кто</h4>${kv([['Программа', esc(t.proc) + (t.pid ? ' (PID ' + t.pid + ')' : '')], ['Файл', t.exe ? `<span class="mono">${esc(t.exe)}</span>` : ''],
+         ['Командная строка', t.cmd ? `<span class="mono">${esc(t.cmd)}</span>` : ''], ['Тип', esc(ACTOR[t.actor] || '')], ['Подпись', t.sig ? sigTag(t.sig) + esc(t.signer || '') : ''],
+         ['Пользователь', esc(t.user)], ['Родитель', esc(t.parent)], ['SHA-256', t.sha256 ? `<span class="mono">${t.sha256}</span> · ${vtLink(t.sha256)}` : '']])}
+       <h4>Куда</h4>${kv([['Адрес', `<span class="mono">${esc(t.remote)}</span>`], ['Имя сайта', esc(t.host)], ['Порты', (t.ports || []).join(', ')],
+         ['Сервис', t.service ? esc(t.service) + ' · ' + esc(t.category) : 'неизвестный адрес']])}
+       <h4>Что отправляется</h4>${whatIsSent(t)}
+       <h4>Файлы, открытые программой</h4>${filesHtml(t)}
+       <p>${t.exe ? `<button class="btn" data-a="reveal" data-p="${esc(t.exe)}">Показать файл</button> ` : ''}${t.exe && !t.trusted ? trustBtn(t.exe) + ' ' : ''}${t.pid > 4 ? `<button class="btn danger" data-a="kill" data-pid="${t.pid}">Завершить процесс</button> ` : ''}
+       ${t.remote ? `<button class="btn danger" data-a="block" data-ip="${esc(t.remote)}">Заблокировать ${esc(t.remote)}</button>` : ''}</p>`);
+  }).join('') || `<tr><td colspan="7" class="empty">${sniffOn ? 'Нет отправок по фильтру. Попробуйте «Любой объём».' : 'Нет данных: перехват пакетов выключен.'}</td></tr>`;
+  bindRows($('#sbody'), renderSends); bindActions($('#sbody'));
+}
+['sq', 'sver', 'smin'].forEach((i) => $('#' + i).addEventListener('input', renderSends));
+
+/* ---------- polling ---------- */
+const loaders = { overview: loadOverview, threats: loadThreats, sends: loadSends, conns: loadConns, procs: loadProcs, packets: loadPackets, flows: loadFlows, dns: loadDns, downloads: loadDownloads, autoruns: loadAutoruns };
+const every = { overview: 3000, threats: 3000, sends: 3000, conns: 2000, procs: 3000, packets: 1000, flows: 3000, dns: 3000, downloads: 0, autoruns: 15000 };
+let busy = false, tick = 0;
+async function refresh(force) {
+  if (busy && !force) return; busy = true;
+  try { await loaders[view](); if (view !== 'overview' && tick % 3 === 0) loadOverview(); } catch (e) { /* app closing */ }
+  busy = false;
+}
+(function loop() {
+  const iv = every[view];
+  if (iv && !document.hidden) refresh(false);
+  tick++;
+  setTimeout(loop, iv || 3000);
+})();
+loadOverview();
+{ const h = location.hash.slice(1).split('?')[0], b = h && document.querySelector(`.tab[data-v="${h}"]`); if (b) b.click(); }
+</script>
+</body>
+</html>
